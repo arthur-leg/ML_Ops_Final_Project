@@ -1,0 +1,5 @@
+outs:
+- md5: ccb52b097a27380a9510dc5344da77b6
+  size: 4708
+  hash: md5
+  path: training_table.csv
