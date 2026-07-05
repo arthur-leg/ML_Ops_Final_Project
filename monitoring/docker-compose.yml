@@ -6,7 +6,10 @@ services:
       - sh
       - -c
       - |
-        sed "s|__PRODUCTION_BACKEND_TARGET__|${PRODUCTION_BACKEND_TARGET}|g" /etc/prometheus/prometheus.yml.template > /etc/prometheus/prometheus.yml
+        BACKEND_TARGET="$${PRODUCTION_BACKEND_TARGET%/}"
+        BACKEND_TARGET="$${BACKEND_TARGET#https://}"
+        BACKEND_TARGET="$${BACKEND_TARGET#http://}"
+        sed "s|__PRODUCTION_BACKEND_TARGET__|$${BACKEND_TARGET}|g" /etc/prometheus/prometheus.yml.template > /etc/prometheus/prometheus.yml
         exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --web.enable-lifecycle
     environment:
       PRODUCTION_BACKEND_TARGET: ${PRODUCTION_BACKEND_TARGET}
