@@ -1,5 +1,6 @@
 name: Deploy to staging
 
+# Deploy to staging
 # Runs on every push to staging, per the required "dev -> staging" pipeline:
 # full test suite, deploy to staging env, deploy candidate model from registry.
 on:
