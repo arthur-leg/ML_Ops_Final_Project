@@ -9,8 +9,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY backend/ ./backend/
 
-# Flask default port
+# Flask default port (informational; Render assigns the real port via $PORT)
 EXPOSE 5000
 
-# Use gunicorn in production instead of Flask's dev server
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "backend.api:app"]
+# Use gunicorn in production instead of Flask's dev server.
+# Render injects the actual port via the $PORT env var at runtime, so we
+# can't hardcode 5000 in an exec-form CMD -- shell form lets $PORT expand.
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} backend.api:app
