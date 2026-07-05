@@ -25,10 +25,10 @@ flowchart LR
 	end
 
 	subgraph Serving
-	API[Flask backend / backend.api]
-	API --> PRED[/predict]
-	API --> HEALTH[/health]
-	API --> METRICS[/metrics]
+	API["Flask backend / backend.api"]
+	API --> PRED["/predict"]
+	API --> HEALTH["/health"]
+	API --> METRICS["/metrics"]
 	end
 
 	subgraph Monitoring
