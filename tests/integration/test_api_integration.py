@@ -28,6 +28,16 @@ class TestHealthEndpoint:
         assert response.status_code == 200
         assert response.get_json()["status"] == "ok"
 
+    def test_metrics_endpoint_exposes_prediction_metrics(self, client):
+        response = client.get("/metrics")
+
+        assert response.status_code == 200
+        body = response.data.decode("utf-8")
+        assert "prediction_requests_total" in body
+        assert "prediction_request_latency_seconds" in body
+        assert "prediction_failed_requests_total" in body
+        assert "backend_health_status" in body
+
 
 class TestPredictEndpointIntegration:
     def test_valid_payload_returns_hpi_prediction(self, client):

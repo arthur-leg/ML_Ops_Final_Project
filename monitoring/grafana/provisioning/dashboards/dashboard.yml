@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Production Backend
+    orgId: 1
+    folder: Production Backend
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
