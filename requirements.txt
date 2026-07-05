@@ -6,3 +6,6 @@ requests
 pytest
 scikit-learn
 joblib
+mlflow
+pyyaml
+python-dotenv
