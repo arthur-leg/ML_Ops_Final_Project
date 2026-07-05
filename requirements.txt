@@ -9,3 +9,5 @@ joblib
 mlflow
 pyyaml
 python-dotenv
+prometheus_client
+prometheus-flask-exporter
