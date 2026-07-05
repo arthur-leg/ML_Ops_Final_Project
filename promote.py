@@ -28,16 +28,18 @@ from sklearn.metrics import mean_absolute_error
 
 from backend.preprocessing import encode_features
 
-from dotenv import load_dotenv
-load_dotenv()
-
 REGISTERED_MODEL_NAME = "hpi-forecast"
 TARGET_COLUMN = "hpi"
 MAE_IMPROVEMENT_REQUIRED = 0.0  # set >0 to require a strict improvement margin
 
 
 def get_latest_version_by_stage(client: MlflowClient, stage: str):
-    versions = client.get_latest_versions(REGISTERED_MODEL_NAME, stages=[stage])
+    try:
+        versions = client.get_latest_versions(REGISTERED_MODEL_NAME, stages=[stage])
+    except mlflow.exceptions.MlflowException:
+        # Registered model doesn't exist at all yet (e.g. no training run
+        # has ever been logged) -- treat the same as "no version in this stage".
+        return None
     return versions[0] if versions else None
 
 
