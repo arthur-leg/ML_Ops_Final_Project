@@ -36,9 +36,14 @@ jobs:
           pip install --upgrade pyOpenSSL
 
       - name: Configure DVC remote credentials
+        env:
+          GDRIVE_CREDENTIALS_JSON: ${{ secrets.GDRIVE_CREDENTIALS_JSON }}
         run: |
           dvc remote modify --local storage gdrive_client_id "$GDRIVE_CLIENT_ID"
           dvc remote modify --local storage gdrive_client_secret "$GDRIVE_CLIENT_SECRET"
+
+          mkdir -p ~/.cache/pydrive2fs/$GDRIVE_CLIENT_ID
+          echo "$GDRIVE_CREDENTIALS_JSON" > ~/.cache/pydrive2fs/$GDRIVE_CLIENT_ID/default.json
 
       - name: Pull latest data from DVC remote
         run: dvc pull
