@@ -1,6 +1,5 @@
 name: Deploy to production
 
-# test
 # Runs on every push to main, per the required "staging -> main" pipeline:
 # requires passing model promotion gates, then deploys the code/models
 # previously validated on staging to production.
@@ -70,12 +69,22 @@ jobs:
         run: curl -X POST "$RENDER_PRODUCTION_DEPLOY_HOOK"
 
       - name: Wait for deployment to be ready
-        run: sleep 45
+        run: sleep 60
 
-      - name: Smoke test production health endpoint
+      - name: Smoke test production health endpoint (with retries)
         env:
           PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
-        run: curl --fail "$PRODUCTION_URL/health"
+        run: |
+          for i in $(seq 1 10); do
+            if curl --fail --silent "$PRODUCTION_URL/health"; then
+              echo "Production is up."
+              exit 0
+            fi
+            echo "Production not ready yet, retrying in 10s... ($i/10)"
+            sleep 10
+          done
+          echo "Production did not become ready in time."
+          exit 1
 
       - name: Verify production serves the Production-stage model
         env:
