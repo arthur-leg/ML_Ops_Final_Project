@@ -43,10 +43,13 @@ def _api_is_reachable() -> bool:
             return False
 
 
-pytestmark = pytest.mark.skipif(
-    not _api_is_reachable(),
-    reason=f"API not reachable at {BASE_URL} -- start the Flask app or set E2E_BASE_URL",
-)
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.skipif(
+        not _api_is_reachable(),
+        reason=f"API not reachable at {BASE_URL} -- start the Flask app or set E2E_BASE_URL",
+    ),
+]
 
 
 class TestPredictEndpointE2E:

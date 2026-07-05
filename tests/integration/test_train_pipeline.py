@@ -14,6 +14,8 @@ import pytest
 
 import train as train_module
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def local_mlflow(tmp_path, monkeypatch):

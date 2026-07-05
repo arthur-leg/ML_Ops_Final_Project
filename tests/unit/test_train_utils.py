@@ -9,6 +9,8 @@ import pytest
 
 from train import get_dvc_data_hash, get_git_commit, load_dataset
 
+pytestmark = pytest.mark.unit
+
 
 class TestLoadDataset:
     """load_dataset() must validate schema and minimum size before training."""
