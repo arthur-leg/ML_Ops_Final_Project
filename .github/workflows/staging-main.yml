@@ -1,6 +1,5 @@
 name: Deploy to production
 
-# Deploy to production
 # Runs on every push to main, per the required "staging -> main" pipeline:
 # requires passing model promotion gates, then deploys the code/models
 # previously validated on staging to production.
