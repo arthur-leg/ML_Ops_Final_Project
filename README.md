@@ -144,9 +144,8 @@ pytest -m e2e -v
 
 ## Production Monitoring Setup
 
-1. Set `PRODUCTION_BACKEND_TARGET` to the live production backend host, for example `your-app.onrender.com`.
-2. Start the monitoring stack with `docker compose -f monitoring/docker-compose.yml up -d`.
-3. Open Grafana at `http://localhost:3000` and sign in with the Grafana admin credentials from the compose file or your overrides.
-4. Open the `Production Backend Overview` dashboard to view request volume, latency, error rate, health, uptime, and model load from the live production backend.
+1. Start the monitoring stack with `docker compose -f monitoring/docker-compose.yml up -d`.
+2. Open Grafana at `http://localhost:3000` and sign in with the Grafana admin credentials from the compose file or your overrides.
+3. Open the `Production Backend Overview` dashboard to view request volume, latency, error rate, health, uptime, and model load from the live production backend.
 
 Prometheus scrapes the backend's `/metrics` endpoint on the production deployment, and Grafana uses Prometheus as its data source.
