@@ -12,6 +12,8 @@ import pytest
 
 from promote import MAE_IMPROVEMENT_REQUIRED, evaluate_model, get_latest_version_by_stage
 
+pytestmark = pytest.mark.unit
+
 
 class TestGetLatestVersionByStage:
     def test_returns_none_when_no_versions_exist(self):

@@ -13,6 +13,8 @@ from mlflow.tracking import MlflowClient
 import promote as promote_module
 import train as train_module
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def local_mlflow(tmp_path, monkeypatch):

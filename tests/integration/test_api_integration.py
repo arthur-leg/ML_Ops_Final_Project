@@ -12,6 +12,8 @@ import pytest
 
 from backend.api import app
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def client():
