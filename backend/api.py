@@ -1,35 +1,65 @@
 """Flask API serving HPI predictions.
 
-Loads the trained model from MODEL_PATH (default: models/model.joblib).
-If no model file is present (e.g. in CI before training), falls back to
-the placeholder so the endpoint contract keeps working. The next step is
-to load the model from the MLflow Model Registry instead of a local file.
+Loads the current Production model from the MLflow Model Registry
+(hosted on DagsHub). Falls back to a placeholder prediction if no
+Production model exists yet (e.g. in CI before the first promotion),
+so the endpoint contract keeps working either way.
 """
 import os
 
-import joblib
+import mlflow
+import mlflow.sklearn
 import pandas as pd
 from flask import Flask, jsonify, request
 
 from backend.preprocessing import encode_features, validate_row
 
-MODEL_PATH = os.environ.get("MODEL_PATH", "models/model.joblib")
+REGISTERED_MODEL_NAME = os.environ.get("MLFLOW_MODEL_NAME", "hpi-forecast")
+MODEL_STAGE = os.environ.get("MLFLOW_MODEL_STAGE", "Production")
 
 app = Flask(__name__)
 
 
-def load_model_artifact(path: str):
-    """Load the trained model artifact, or None if unavailable."""
-    if os.path.exists(path):
-        return joblib.load(path)
-    return None
+def load_production_model_artifact():
+    """Load the current Production-stage model + its training columns from MLflow.
+
+    Returns a dict {"model": <sklearn model>, "columns": [...]}, matching
+    the shape predict_row() expects -- or None if unavailable (e.g. no
+    MLFLOW_TRACKING_URI configured, or no model has been promoted yet).
+    """
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
+    if not tracking_uri:
+        return None
+
+    mlflow.set_tracking_uri(tracking_uri)
+
+    try:
+        model_uri = f"models:/{REGISTERED_MODEL_NAME}/{MODEL_STAGE}"
+        model = mlflow.sklearn.load_model(model_uri)
+
+        # columns.json was logged as an artifact alongside the model run;
+        # fetch it via the registry -> run_id -> artifact path.
+        client = mlflow.tracking.MlflowClient()
+        version = client.get_latest_versions(REGISTERED_MODEL_NAME, stages=[MODEL_STAGE])[0]
+        run_id = version.run_id
+        local_path = client.download_artifacts(run_id, "columns.json")
+
+        import json
+
+        with open(local_path) as f:
+            columns = json.load(f)
+
+        return {"model": model, "columns": columns}
+    except Exception as e:
+        app.logger.warning(f"Could not load Production model from MLflow: {e}")
+        return None
 
 
-MODEL_ARTIFACT = load_model_artifact(MODEL_PATH)
+MODEL_ARTIFACT = load_production_model_artifact()
 
 
 def predict_placeholder(row):
-    """Fallback when no trained model is available."""
+    """Fallback when no Production model is available."""
     return 100.0
 
 
@@ -61,6 +91,8 @@ def health():
         {
             "status": "ok",
             "model_loaded": MODEL_ARTIFACT is not None,
+            "model_name": REGISTERED_MODEL_NAME,
+            "model_stage": MODEL_STAGE,
         }
     ), 200
 
