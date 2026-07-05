@@ -7,10 +7,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY app/ ./app/
+COPY backend/ ./backend/
 
 # Flask default port
 EXPOSE 5000
 
 # Use gunicorn in production instead of Flask's dev server
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app.api:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "backend.api:app"]

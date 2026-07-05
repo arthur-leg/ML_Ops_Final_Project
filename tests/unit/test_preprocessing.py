@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from app.preprocessing import encode_features, validate_row
+from backend.preprocessing import encode_features, validate_row
 
 pytestmark = pytest.mark.unit
 

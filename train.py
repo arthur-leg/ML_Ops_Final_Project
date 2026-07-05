@@ -5,7 +5,7 @@ Usage:
 
 Trains a scikit-learn regression model to predict hpi (house price
 index) from country, year, hicp and unemployment_rate, using the same
-encoding as the API (app.preprocessing.encode_features).
+encoding as the API (backend.preprocessing.encode_features).
 
 Outputs:
     models/model.joblib   -- dict {"model", "columns", "metrics", "trained_at",
@@ -26,7 +26,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 
-from app.preprocessing import REQUIRED_FEATURE_COLUMNS, encode_features
+from backend.preprocessing import REQUIRED_FEATURE_COLUMNS, encode_features
 
 TARGET_COLUMN = "hpi"
 MODEL_DIR = Path("models")

@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import pytest
 
-from app.data_loader import REQUIRED_COLUMNS, download_csv, load_data
+from backend.data_loader import REQUIRED_COLUMNS, download_csv, load_data
 
 pytestmark = pytest.mark.integration
 
@@ -53,7 +53,7 @@ def test_download_csv_writes_file_from_drive(monkeypatch, tmp_path):
         with open(output, "w") as f:
             f.write("country,year,hpi,hicp,unemployment_rate\nAT,2015,100.0,0.8,6.1\n")
 
-    monkeypatch.setattr("app.data_loader.gdown.download", fake_download)
+    monkeypatch.setattr("backend.data_loader.gdown.download", fake_download)
 
     output_path = str(tmp_path / "raw_data.csv")
     result_path = download_csv("fake_file_id", output_path)
