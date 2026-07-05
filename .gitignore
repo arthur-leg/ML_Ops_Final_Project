@@ -3,3 +3,5 @@
 models/
 __pycache__/
 mlruns/
+check_stages.py
+mlflow.db
