@@ -11,7 +11,7 @@ import joblib
 import pandas as pd
 from flask import Flask, jsonify, request
 
-from app.preprocessing import encode_features, validate_row
+from backend.preprocessing import encode_features, validate_row
 
 MODEL_PATH = os.environ.get("MODEL_PATH", "models/model.joblib")
 
@@ -43,6 +43,16 @@ def predict_row(row: dict) -> float:
     # Align one-hot columns with what the model saw during training
     encoded = encoded.reindex(columns=MODEL_ARTIFACT["columns"], fill_value=0)
     return float(MODEL_ARTIFACT["model"].predict(encoded)[0])
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = os.environ.get(
+        "CORS_ALLOW_ORIGIN", "*"
+    )
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
 
 
 @app.route("/health", methods=["GET"])

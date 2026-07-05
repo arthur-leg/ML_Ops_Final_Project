@@ -46,7 +46,7 @@ def base_url():
         return
 
     # Mode 2: boot a real local server for the duration of the tests
-    env = {**os.environ, "FLASK_APP": "app.api"}
+    env = {**os.environ, "FLASK_APP": "backend.api"}
     process = subprocess.Popen(
         [sys.executable, "-m", "flask", "run", "--host", LOCAL_HOST, "--port", str(LOCAL_PORT)],
         env=env,

@@ -1,6 +1,6 @@
 import pytest
 
-from app.api import app
+from backend.api import app
 
 pytestmark = pytest.mark.integration
 
