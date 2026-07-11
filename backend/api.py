@@ -23,12 +23,17 @@ from prometheus_client import (
 )
 
 from backend.preprocessing import encode_features, validate_row
+from backend.auth import auth_bp, require_auth
+from dotenv import load_dotenv
+
+load_dotenv()
 
 REGISTERED_MODEL_NAME = os.environ.get("MLFLOW_MODEL_NAME", "hpi-forecast")
 MODEL_STAGE = os.environ.get("MLFLOW_MODEL_STAGE", "Production")
 PROMETHEUS_MULTIPROC_DIR = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
 
 app = Flask(__name__)
+app.register_blueprint(auth_bp)
 
 PREDICTION_REQUESTS_TOTAL = Counter(
     "prediction_requests_total",
@@ -153,7 +158,7 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = os.environ.get(
         "CORS_ALLOW_ORIGIN", "*"
     )
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
 
@@ -183,6 +188,7 @@ def health():
 
 
 @app.route("/predict", methods=["POST"])
+@require_auth
 def predict():
     payload = request.get_json(silent=True)
     if payload is None:
@@ -202,4 +208,4 @@ def predict():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)

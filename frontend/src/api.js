@@ -11,11 +11,32 @@ export async function checkHealth() {
   }
 }
 
-// Sends {country, year, hicp, unemployment_rate} and returns {hpi}
-export async function predictHpi(payload) {
-  const res = await fetch(`${BASE_URL}/predict`, {
+// Exchanges a Google ID token for our own JWT + user info
+export async function loginWithGoogle(googleToken) {
+  const res = await fetch(`${BASE_URL}/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: googleToken }),
+  })
+
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    const message = data && data.error ? data.error : `Login failed (${res.status})`
+    throw new Error(message)
+  }
+
+  return data // { access_token, email, name }
+}
+
+// Sends {country, year, hicp, unemployment_rate} and returns {hpi}
+export async function predictHpi(payload, jwt) {
+  const res = await fetch(`${BASE_URL}/predict`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
@@ -23,7 +44,9 @@ export async function predictHpi(payload) {
 
   if (!res.ok) {
     const message = data && data.error ? data.error : `Request failed (${res.status})`
-    throw new Error(message)
+    const err = new Error(message)
+    err.status = res.status
+    throw err
   }
 
   return data
