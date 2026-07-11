@@ -12,9 +12,10 @@ type_defs = gql("""
 
     type Query {
         predict(
+            country: String!
             year: Int!
-            inflation: Float!
-            unemployment: Float!
+            hicp: Float!
+            unemploymentRate: Float!
         ): PredictionResult!
     }
 """)
@@ -23,12 +24,17 @@ query = QueryType()
 
 
 @query.field("predict")
-def resolve_predict(_, info, year, inflation, unemployment):
+def resolve_predict(_, info, country, year, hicp, unemploymentRate):
     # Imported lazily to avoid a circular import with api.py at module load time.
     from backend.api import predict_row
     from backend.preprocessing import validate_row
 
-    row = {"year": year, "inflation": inflation, "unemployment": unemployment}
+    row = {
+        "country": country,
+        "year": year,
+        "hicp": hicp,
+        "unemployment_rate": unemploymentRate,
+    }
     validate_row(row)  # raises ValueError -> surfaced as a GraphQL error below
     hpi = predict_row(row)
     return {"hpi": hpi}
