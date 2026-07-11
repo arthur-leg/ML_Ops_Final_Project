@@ -4,10 +4,12 @@ import os
 from functools import wraps
 
 import jwt
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from dotenv import load_dotenv
+
+from backend.app_db import upsert_user
 
 load_dotenv()
 
@@ -69,9 +71,15 @@ def google_login():
     if not email:
         return jsonify({"error": "Google token did not contain an email"}), 401
 
+    try:
+        user_record = upsert_user(email=email, name=name)
+    except Exception:
+        current_app.logger.exception("Failed to persist Google-authenticated user")
+        return jsonify({"error": "User persistence failed"}), 500
+
     access_token = _issue_jwt(email, name)
 
-    return jsonify({"access_token": access_token, "email": email, "name": name}), 200
+    return jsonify({"access_token": access_token, "email": email, "name": name, "user": user_record}), 200
 
 
 def _decode_token():

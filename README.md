@@ -43,6 +43,8 @@ flowchart LR
 
 The backend serves predictions from the Production model in MLflow. The same service exposes `/health` and `/metrics`, so the live production deployment can be monitored directly.
 
+The application also keeps a separate user-account database for Google-authenticated users. That database is independent from the MLflow/DagsHub model registry and is populated from `/auth/google` with a minimal `users` table: `email`, `name`, `created_at`.
+
 ## Repository Layout
 
 - `backend/`: Flask API, preprocessing, and model loading helpers.
@@ -51,6 +53,10 @@ The backend serves predictions from the Production model in MLflow. The same ser
 - `frontend/`: Vite-based UI for submitting predictions and viewing results.
 - `monitoring/`: Prometheus and Grafana provisioning for production monitoring.
 - `tests/`: unit, integration, and E2E test suites.
+
+The app database is configured separately from MLflow with `APP_DATABASE_URL` (preferred) or `DATABASE_URL`. For Postgres, use a connection string such as `postgresql://user:password@host:5432/appdb`.
+
+The backend database schema is defined explicitly in [backend/sql/001_create_users.sql](backend/sql/001_create_users.sql). The application applies this migration when `/auth/google` first needs the `users` table.
 
 ## How It Works
 
@@ -109,6 +115,14 @@ python -m venv .venv
 pip install -r requirements.txt
 python -m flask --app backend.api run --host 0.0.0.0 --port 5000
 ```
+
+### Backend + Postgres
+
+```powershell
+docker compose up --build
+```
+
+This starts the backend on port 5000 and a separate Postgres container for application users.
 
 ### Frontend
 
