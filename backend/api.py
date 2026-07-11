@@ -23,7 +23,7 @@ from prometheus_client import (
 )
 
 from ariadne import graphql_sync
-from ariadne.constants import PLAYGROUND_HTML
+from ariadne.explorer import ExplorerGraphiQL
 
 from backend.preprocessing import encode_features, validate_row
 from backend.auth import auth_bp, require_auth, require_scope
@@ -240,7 +240,7 @@ def predict_external():
 # ---------------------------------------------------------------------------
 @app.route("/graphql", methods=["GET"])
 def graphql_playground():
-    return PLAYGROUND_HTML, 200
+    return ExplorerGraphiQL().html(None), 200
 
 
 @app.route("/graphql", methods=["POST"])

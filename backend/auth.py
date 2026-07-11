@@ -7,6 +7,9 @@ import jwt
 from flask import Blueprint, g, jsonify, request
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
+from dotenv import load_dotenv
+
+load_dotenv()
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-me")
