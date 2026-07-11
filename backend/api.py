@@ -22,8 +22,12 @@ from prometheus_client import (
     multiprocess,
 )
 
+from ariadne import graphql_sync
+from ariadne.constants import PLAYGROUND_HTML
+
 from backend.preprocessing import encode_features, validate_row
-from backend.auth import auth_bp, require_auth
+from backend.auth import auth_bp, require_auth, require_scope
+from backend.graphql_schema import schema
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -205,6 +209,49 @@ def predict():
         return jsonify({"error": "Internal server error"}), 500
 
     return jsonify({"hpi": prediction}), 200
+
+
+# ---------------------------------------------------------------------------
+# External API (2nd audience: partners with a scope="external" JWT, not a
+# Google-login user). REST paradigm.
+# ---------------------------------------------------------------------------
+@app.route("/api/v1/predict", methods=["POST"])
+@require_scope("external")
+def predict_external():
+    payload = request.get_json(silent=True)
+    if payload is None:
+        return jsonify({"error": "bad_request", "message": "Request body must be JSON"}), 400
+
+    try:
+        validate_row(payload)
+        prediction = predict_row(payload)
+    except ValueError as e:
+        return jsonify({"error": "validation_error", "message": str(e)}), 400
+    except Exception:
+        app.logger.exception("Unexpected error while serving external prediction")
+        PREDICTION_FAILED_REQUESTS_TOTAL.inc()
+        return jsonify({"error": "internal_error", "message": "Internal server error"}), 500
+
+    return jsonify({"client": g.current_user["client"], "hpi": prediction}), 200
+
+
+# ---------------------------------------------------------------------------
+# GraphQL (2nd API paradigm, alongside REST above). Same external scope.
+# ---------------------------------------------------------------------------
+@app.route("/graphql", methods=["GET"])
+def graphql_playground():
+    return PLAYGROUND_HTML, 200
+
+
+@app.route("/graphql", methods=["POST"])
+@require_scope("external")
+def graphql_server():
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "bad_request", "message": "Request body must be JSON"}), 400
+
+    success, result = graphql_sync(schema, data, context_value=request)
+    return jsonify(result), 200 if success else 400
 
 
 if __name__ == "__main__":

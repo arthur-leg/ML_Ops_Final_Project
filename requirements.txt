@@ -13,3 +13,4 @@ prometheus_client
 prometheus-flask-exporter
 google-auth
 PyJWT
+ariadne
