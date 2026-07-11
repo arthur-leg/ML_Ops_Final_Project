@@ -62,13 +62,13 @@ def base_url():
         process.wait(timeout=10)
 
 
-def test_full_predict_flow_health_and_prediction(base_url):
+def test_full_predict_flow_health_and_prediction(base_url, auth_headers):
     health = requests.get(f"{base_url}/health", timeout=5)
     assert health.status_code == 200
     assert health.json()["status"] == "ok"
 
     payload = {"country": "AT", "year": 2020, "hicp": 1.2, "unemployment_rate": 5.4}
-    response = requests.post(f"{base_url}/predict", json=payload, timeout=5)
+    response = requests.post(f"{base_url}/predict", json=payload, headers=auth_headers, timeout=5)
     assert response.status_code == 200
 
     body = response.json()
@@ -76,7 +76,9 @@ def test_full_predict_flow_health_and_prediction(base_url):
     assert isinstance(body["hpi"], (int, float))
 
 
-def test_invalid_input_rejected_by_live_server(base_url):
-    response = requests.post(f"{base_url}/predict", json={"country": "Austria"}, timeout=5)
+def test_invalid_input_rejected_by_live_server(base_url, auth_headers):
+    response = requests.post(
+        f"{base_url}/predict", json={"country": "Austria"}, headers=auth_headers, timeout=5
+    )
     assert response.status_code == 400
     assert "error" in response.json()
