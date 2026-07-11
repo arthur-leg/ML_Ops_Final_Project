@@ -1,5 +1,6 @@
 name: Deploy to staging
 
+# Deploy to staging
 # Runs on every push to staging, per the required "dev -> staging" pipeline:
 # full test suite, then train the candidate model and register it in MLflow
 # (stage=Staging). No real deployment step: the project runs locally, so
