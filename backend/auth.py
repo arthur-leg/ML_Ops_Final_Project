@@ -20,7 +20,24 @@ def _issue_jwt(email: str, name: str) -> str:
     payload = {
         "email": email,
         "name": name,
+        "scope": "user",
         "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=JWT_EXPIRY_HOURS),
+        "iat": datetime.datetime.utcnow(),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def generate_external_token(client_name: str, expires_hours: int = 24 * 30) -> str:
+    """Issue a JWT for an external (non-Google-authenticated) API client.
+
+    Not exposed as a public endpoint on purpose: an external partner should
+    receive this token out-of-band (e.g. handed to them, or generated via
+    the CLI script), not be able to self-issue one by hitting a route.
+    """
+    payload = {
+        "client": client_name,
+        "scope": "external",
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=expires_hours),
         "iat": datetime.datetime.utcnow(),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -54,25 +71,59 @@ def google_login():
     return jsonify({"access_token": access_token, "email": email, "name": name}), 200
 
 
+def _decode_token():
+    """Shared token-parsing logic. Returns (payload, None) or (None, (response, status))."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None, (jsonify({"error": "missing_token", "message": "Authorization header (Bearer <token>) required"}), 401)
+
+    token = auth_header.split(" ", 1)[1].strip()
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        return None, (jsonify({"error": "token_expired", "message": "Token expired"}), 401)
+    except jwt.InvalidTokenError:
+        return None, (jsonify({"error": "invalid_token", "message": "Invalid token"}), 401)
+
+    return payload, None
+
+
 def require_auth(f):
-    """Decorator: protects a Flask route behind a valid JWT (issued by /auth/google
-    or requested via the external API with a token)."""
+    """Protects a route behind any valid JWT issued by /auth/google (scope=user)."""
 
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            return jsonify({"error": "Missing or invalid Authorization header"}), 401
-
-        token = auth_header.split(" ", 1)[1].strip()
-        try:
-            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        except jwt.ExpiredSignatureError:
-            return jsonify({"error": "Token expired"}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({"error": "Invalid token"}), 401
+        payload, error = _decode_token()
+        if error:
+            return error
 
         g.current_user = payload
         return f(*args, **kwargs)
 
     return decorated
+
+
+def require_scope(scope: str):
+    """Protects a route behind a JWT carrying a specific scope claim.
+    Use require_scope("external") for the external-facing API, so a
+    Google-login user token can't accidentally pass, and vice versa."""
+
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            payload, error = _decode_token()
+            if error:
+                return error
+
+            if payload.get("scope") != scope:
+                return jsonify({
+                    "error": "forbidden",
+                    "message": f"This token does not have '{scope}' scope"
+                }), 403
+
+            g.current_user = payload
+            return f(*args, **kwargs)
+
+        return decorated
+
+    return decorator
