@@ -14,3 +14,4 @@ prometheus-flask-exporter
 google-auth
 PyJWT
 ariadne
+psycopg2-binary

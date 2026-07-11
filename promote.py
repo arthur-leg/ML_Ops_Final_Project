@@ -107,6 +107,12 @@ def promote(eval_data_path: str) -> dict:
     return result
 
 
+def main(eval_data_path: str) -> None:
+    outcome = promote(eval_data_path)
+    print(outcome)
+    sys.exit(0 if outcome["promoted"] else 1)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Promote Staging model to Production")
     parser.add_argument(
@@ -115,7 +121,4 @@ if __name__ == "__main__":
         help="Path to CSV with real/recent data to evaluate candidate vs production model",
     )
     args = parser.parse_args()
-
-    outcome = promote(args.data)
-    print(outcome)
-    sys.exit(0 if outcome["promoted"] else 1)
+    main(args.data)
