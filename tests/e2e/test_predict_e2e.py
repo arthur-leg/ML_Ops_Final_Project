@@ -53,29 +53,33 @@ pytestmark = [
 
 
 class TestPredictEndpointE2E:
-    def test_predict_returns_valid_response_shape(self):
+    def test_predict_returns_valid_response_shape(self, auth_headers):
         payload = {
             "country": "FR",
             "year": 2022,
             "hicp": 105.0,
             "unemployment_rate": 8.2,
         }
-        response = requests.post(f"{BASE_URL}/predict", json=payload, timeout=10)
+        response = requests.post(
+            f"{BASE_URL}/predict", json=payload, headers=auth_headers, timeout=10
+        )
 
         assert response.status_code == 200
         body = response.json()
         assert "hpi" in body
         assert isinstance(body["hpi"], (int, float))
 
-    def test_predict_rejects_missing_required_fields(self):
+    def test_predict_rejects_missing_required_fields(self, auth_headers):
         incomplete_payload = {"country": "FR"}  # missing year, hicp, unemployment_rate
-        response = requests.post(f"{BASE_URL}/predict", json=incomplete_payload, timeout=10)
+        response = requests.post(
+            f"{BASE_URL}/predict", json=incomplete_payload, headers=auth_headers, timeout=10
+        )
 
         # api.py returns 400 with an {"error": ...} body via validate_row()
         assert response.status_code == 400
         assert "error" in response.json()
 
-    def test_predict_is_consistent_for_same_input(self):
+    def test_predict_is_consistent_for_same_input(self, auth_headers):
         """Same input should give the same prediction (model is deterministic
         at inference time -- guards against e.g. accidentally reloading a
         different/random model per request)."""
@@ -85,8 +89,8 @@ class TestPredictEndpointE2E:
             "hicp": 103.0,
             "unemployment_rate": 7.5,
         }
-        r1 = requests.post(f"{BASE_URL}/predict", json=payload, timeout=10)
-        r2 = requests.post(f"{BASE_URL}/predict", json=payload, timeout=10)
+        r1 = requests.post(f"{BASE_URL}/predict", json=payload, headers=auth_headers, timeout=10)
+        r2 = requests.post(f"{BASE_URL}/predict", json=payload, headers=auth_headers, timeout=10)
 
         assert r1.json()["hpi"] == pytest.approx(r2.json()["hpi"])
 
