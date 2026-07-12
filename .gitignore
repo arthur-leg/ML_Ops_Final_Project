@@ -1,5 +1,6 @@
 .venv/
 .env
+.env.example
 models/
 __pycache__/
 mlruns/

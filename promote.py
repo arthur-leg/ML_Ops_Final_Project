@@ -60,31 +60,38 @@ def evaluate_model(model_uri: str, df: pd.DataFrame) -> float:
     return float(mean_absolute_error(y, predictions))
 
 
-def main(eval_data_path: str):
+def promote(eval_data_path: str) -> dict:
+    """Run the promotion gate and return a result dict. Raises no exceptions
+    for a normal 'gate failed' outcome -- that's a valid result, not an error.
+    Callable both from the CLI (__main__) and from the promote microservice.
+    """
     client = MlflowClient()
 
     staging = get_latest_version_by_stage(client, "Staging")
     if staging is None:
-        print("No model in Staging. Nothing to promote.")
-        sys.exit(1)
+        return {"promoted": False, "reason": "no_staging_model"}
 
     production = get_latest_version_by_stage(client, "Production")
 
     df = pd.read_csv(eval_data_path).dropna()
 
     staging_mae = evaluate_model(f"models:/{REGISTERED_MODEL_NAME}/{staging.version}", df)
-    print(f"Staging model (v{staging.version}) MAE on {eval_data_path}: {staging_mae:.4f}")
 
     if production is not None:
         production_mae = evaluate_model(
             f"models:/{REGISTERED_MODEL_NAME}/{production.version}", df
         )
-        print(f"Production model (v{production.version}) MAE on {eval_data_path}: {production_mae:.4f}")
     else:
         production_mae = float("inf")
-        print("No current Production model -- Staging will be promoted if it beats a trivial baseline.")
 
     passed = staging_mae <= (production_mae - MAE_IMPROVEMENT_REQUIRED)
+
+    result = {
+        "staging_version": staging.version,
+        "staging_mae": round(staging_mae, 4),
+        "production_version": production.version if production else None,
+        "production_mae": None if production is None else round(production_mae, 4),
+    }
 
     if passed:
         client.transition_model_version_stage(
@@ -93,11 +100,17 @@ def main(eval_data_path: str):
             stage="Production",
             archive_existing_versions=True,
         )
-        print(f"GATE PASSED: promoted version {staging.version} to Production.")
-        sys.exit(0)
+        result.update({"promoted": True, "reason": "gate_passed"})
     else:
-        print("GATE FAILED: Staging model does not improve on Production. No promotion.")
-        sys.exit(1)
+        result.update({"promoted": False, "reason": "gate_failed"})
+
+    return result
+
+
+def main(eval_data_path: str) -> None:
+    outcome = promote(eval_data_path)
+    print(outcome)
+    sys.exit(0 if outcome["promoted"] else 1)
 
 
 if __name__ == "__main__":

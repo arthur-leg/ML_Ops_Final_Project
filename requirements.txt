@@ -11,3 +11,7 @@ pyyaml
 python-dotenv
 prometheus_client
 prometheus-flask-exporter
+google-auth
+PyJWT
+ariadne
+psycopg2-binary

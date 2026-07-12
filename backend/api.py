@@ -22,13 +22,22 @@ from prometheus_client import (
     multiprocess,
 )
 
+from ariadne import graphql_sync
+from ariadne.explorer import ExplorerGraphiQL
+
 from backend.preprocessing import encode_features, validate_row
+from backend.auth import auth_bp, require_auth, require_scope
+from backend.graphql_schema import schema
+from dotenv import load_dotenv
+
+load_dotenv()
 
 REGISTERED_MODEL_NAME = os.environ.get("MLFLOW_MODEL_NAME", "hpi-forecast")
 MODEL_STAGE = os.environ.get("MLFLOW_MODEL_STAGE", "Production")
 PROMETHEUS_MULTIPROC_DIR = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
 
 app = Flask(__name__)
+app.register_blueprint(auth_bp)
 
 PREDICTION_REQUESTS_TOTAL = Counter(
     "prediction_requests_total",
@@ -153,7 +162,7 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = os.environ.get(
         "CORS_ALLOW_ORIGIN", "*"
     )
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
 
@@ -183,6 +192,7 @@ def health():
 
 
 @app.route("/predict", methods=["POST"])
+@require_auth
 def predict():
     payload = request.get_json(silent=True)
     if payload is None:
@@ -201,5 +211,48 @@ def predict():
     return jsonify({"hpi": prediction}), 200
 
 
+# ---------------------------------------------------------------------------
+# External API (2nd audience: partners with a scope="external" JWT, not a
+# Google-login user). REST paradigm.
+# ---------------------------------------------------------------------------
+@app.route("/api/v1/predict", methods=["POST"])
+@require_scope("external")
+def predict_external():
+    payload = request.get_json(silent=True)
+    if payload is None:
+        return jsonify({"error": "bad_request", "message": "Request body must be JSON"}), 400
+
+    try:
+        validate_row(payload)
+        prediction = predict_row(payload)
+    except ValueError as e:
+        return jsonify({"error": "validation_error", "message": str(e)}), 400
+    except Exception:
+        app.logger.exception("Unexpected error while serving external prediction")
+        PREDICTION_FAILED_REQUESTS_TOTAL.inc()
+        return jsonify({"error": "internal_error", "message": "Internal server error"}), 500
+
+    return jsonify({"client": g.current_user["client"], "hpi": prediction}), 200
+
+
+# ---------------------------------------------------------------------------
+# GraphQL (2nd API paradigm, alongside REST above). Same external scope.
+# ---------------------------------------------------------------------------
+@app.route("/graphql", methods=["GET"])
+def graphql_playground():
+    return ExplorerGraphiQL().html(None), 200
+
+
+@app.route("/graphql", methods=["POST"])
+@require_scope("external")
+def graphql_server():
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "bad_request", "message": "Request body must be JSON"}), 400
+
+    success, result = graphql_sync(schema, data, context_value=request)
+    return jsonify(result), 200 if success else 400
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)

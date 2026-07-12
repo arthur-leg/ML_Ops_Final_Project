@@ -1,0 +1,75 @@
+services:
+  app-db:
+    image: postgres:16-alpine
+    container_name: mlops-app-db
+    environment:
+      POSTGRES_DB: ${APP_DB_NAME:-mlops_app}
+      POSTGRES_USER: ${APP_DB_USER:-mlops}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD:-mlops-secret}
+    volumes:
+      - app_db_data:/var/lib/postgresql/data
+      - ./backend/sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${APP_DB_USER:-mlops} -d ${APP_DB_NAME:-mlops_app}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: mlops-backend
+    depends_on:
+      app-db:
+        condition: service_healthy
+    environment:
+      APP_DATABASE_URL: postgresql://${APP_DB_USER:-mlops}:${APP_DB_PASSWORD:-mlops-secret}@app-db:5432/${APP_DB_NAME:-mlops_app}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      MLFLOW_TRACKING_USERNAME: ${MLFLOW_TRACKING_USERNAME}
+      MLFLOW_TRACKING_PASSWORD: ${MLFLOW_TRACKING_PASSWORD}
+      MLFLOW_MODEL_NAME: ${MLFLOW_MODEL_NAME:-hpi-forecast}
+      MLFLOW_MODEL_STAGE: ${MLFLOW_MODEL_STAGE:-Production}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-*}
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  train-service:
+    build: .
+    container_name: mlops-train-service
+    command: gunicorn --bind 0.0.0.0:5001 services.train_service.app:app
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key-change-me}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      MLFLOW_TRACKING_USERNAME: ${MLFLOW_TRACKING_USERNAME}
+      MLFLOW_TRACKING_PASSWORD: ${MLFLOW_TRACKING_PASSWORD}
+      TRAIN_SERVICE_PORT: 5001
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+
+  promote-service:
+    build: .
+    container_name: mlops-promote-service
+    command: gunicorn --bind 0.0.0.0:5002 services.promote_service.app:app
+    volumes:
+      - ./data:/app/data
+    environment:
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key-change-me}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      MLFLOW_TRACKING_USERNAME: ${MLFLOW_TRACKING_USERNAME}
+      MLFLOW_TRACKING_PASSWORD: ${MLFLOW_TRACKING_PASSWORD}
+      PROMOTE_SERVICE_PORT: 5002
+    ports:
+      - "5002:5002"
+    restart: unless-stopped
+
+volumes:
+  app_db_data:

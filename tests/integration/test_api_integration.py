@@ -40,32 +40,34 @@ class TestHealthEndpoint:
 
 
 class TestPredictEndpointIntegration:
-    def test_valid_payload_returns_hpi_prediction(self, client):
+    def test_valid_payload_returns_hpi_prediction(self, client, auth_headers):
         payload = {
             "country": "FR",
             "year": 2022,
             "hicp": 105.0,
             "unemployment_rate": 7.5,
         }
-        response = client.post("/predict", json=payload)
+        response = client.post("/predict", json=payload, headers=auth_headers)
 
         assert response.status_code == 200
         body = response.get_json()
         assert "hpi" in body
         assert isinstance(body["hpi"], (int, float))
 
-    def test_invalid_payload_returns_400_with_error_message(self, client):
+    def test_invalid_payload_returns_400_with_error_message(self, client, auth_headers):
         payload = {"country": "FRANCE", "year": 2022, "hicp": 105.0, "unemployment_rate": 7.5}
-        response = client.post("/predict", json=payload)
+        response = client.post("/predict", json=payload, headers=auth_headers)
 
         assert response.status_code == 400
         assert "error" in response.get_json()
 
-    def test_non_json_body_returns_400(self, client):
-        response = client.post("/predict", data="not json", content_type="text/plain")
+    def test_non_json_body_returns_400(self, client, auth_headers):
+        response = client.post(
+            "/predict", data="not json", content_type="text/plain", headers=auth_headers
+        )
         assert response.status_code == 400
 
-    def test_missing_field_returns_400(self, client):
+    def test_missing_field_returns_400(self, client, auth_headers):
         payload = {"country": "FR", "year": 2022, "hicp": 105.0}  # missing unemployment_rate
-        response = client.post("/predict", json=payload)
+        response = client.post("/predict", json=payload, headers=auth_headers)
         assert response.status_code == 400
